@@ -1,0 +1,25 @@
+# Source of truth for the Packer toolchain.
+# Never hand-edited: the detect workflow opens PRs against this file.
+
+packer:
+  version: "1.16.0"
+  approved_by: "j.smith"
+  approved_at: "2026-10-01"
+
+plugins:
+  vsphere:
+    source: github.com/hashicorp/vsphere
+    version: "1.4.2"
+    api_version: "x5.0"
+    approved_by: "j.smith"
+    approved_at: "2026-10-01"
+  ansible:
+    source: github.com/hashicorp/ansible
+    version: "1.1.1"
+    api_version: "x5.0"
+    approved_by: "j.smith"
+    approved_at: "2026-10-01"
+
+policy:
+  min_soak_days: 14
+  key_fingerprint: "C874011F0AB405110D02105534365D9472D7468F"

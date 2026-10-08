@@ -1,0 +1,3 @@
+# versions.yaml requires review by the toolchain owners.
+# These approvers must NOT have write access to scripts/ or .github/.
+/versions.yaml @acme/toolchain-approvers

@@ -1,0 +1,46 @@
+name: Detect upstream versions
+
+# Scheduled poll of upstream releases. Opens a PR against versions.yaml
+# when something newer is available. No approval, no promotion — just a PR.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # Mondays, 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check upstream for newer versions
+        id: check
+        run: ./scripts/detect-upstream.sh
+        # STUB: writes versions.yaml in place and sets outputs:
+        #   changed=true|false
+        #   summary=<human-readable list of what moved>
+
+      - name: Open PR
+        if: steps.check.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bump/toolchain-${{ github.run_id }}
+          title: "Bump Packer toolchain"
+          body: |
+            Automated version bump proposed by the detect workflow.
+
+            ${{ steps.check.outputs.summary }}
+
+            The gate workflow will post criteria results below.
+            Do not merge until all six criteria pass and you have
+            completed the reviewer checklist in CONTRIBUTING.md.
+          labels: toolchain-bump
+          commit-message: |
+            Bump Packer toolchain
+
+            Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

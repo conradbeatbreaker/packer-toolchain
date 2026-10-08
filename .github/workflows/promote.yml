@@ -1,0 +1,60 @@
+name: Promote to Nexus
+
+# Runs after a bump merges. The `artifact-promotion` environment is where
+# the human approval actually happens: GitHub blocks this job until a
+# designated reviewer approves, and records who and when against the run.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "versions.yaml"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: artifact-promotion    # <-- required reviewers configured here
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Re-run gate criteria
+        run: ./scripts/gate.sh
+        # Deliberately repeated. The PR gate ran against the PR head;
+        # this runs against what actually merged.
+
+      - name: Upload to Nexus
+        env:
+          NEXUS_URL: ${{ vars.NEXUS_URL }}
+          NEXUS_USER: ${{ secrets.NEXUS_PROMOTE_USER }}
+          NEXUS_PASS: ${{ secrets.NEXUS_PROMOTE_PASS }}
+        run: ./scripts/promote.sh
+        # STUB: uploads zip + SHA256SUMS + .sig to the hosted raw repo at
+        # a version-scoped path. Redeploy is disabled, so a replay fails
+        # loudly rather than silently overwriting.
+
+      - name: Record approver in versions.yaml
+        run: ./scripts/record-approval.sh "${{ github.actor }}"
+        # STUB: writes approved_by / approved_at back, commits to main.
+
+  notify-consumers:
+    needs: promote
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repo:
+          - acme/windows-image
+          # add further image repos here
+    steps:
+      - name: Open bump PR in consumer repo
+        env:
+          GH_TOKEN: ${{ secrets.CONSUMER_PR_TOKEN }}
+        run: |
+          gh workflow run bump-toolchain.yml \
+            --repo "${{ matrix.repo }}" \
+            --field toolchain_sha="${{ github.sha }}"
+        # Pattern A: each image repo gets a PR and approves its own bump.
+        # Nothing is pushed into a consumer without review there.

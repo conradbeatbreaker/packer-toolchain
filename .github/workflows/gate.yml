@@ -1,0 +1,65 @@
+name: Gate
+
+# Runs on any PR touching versions.yaml. All six criteria must pass.
+# Also enforces that a bump PR touches ONLY versions.yaml — a PR that
+# edits the gate itself must not be reviewable as a routine bump.
+
+on:
+  pull_request:
+    paths:
+      - "versions.yaml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  scope-check:
+    name: PR touches only versions.yaml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail if the diff reaches beyond versions.yaml
+        run: ./scripts/check-pr-scope.sh "${{ github.event.pull_request.base.sha }}"
+        # STUB: exits 1 if any path other than versions.yaml changed.
+        # Catches a PR that weakens the gate while bumping a version.
+
+  criteria:
+    name: Gate criteria
+    runs-on: ubuntu-latest
+    needs: scope-check
+    outputs:
+      report: ${{ steps.run.outputs.report }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Import pinned HashiCorp signing key
+        run: |
+          gpg --import keys/hashicorp.asc
+          # Fingerprint lives in versions.yaml under policy.key_fingerprint.
+          # Never fetched at runtime — a fetched key proves nothing.
+
+      - name: Run criteria
+        id: run
+        run: ./scripts/gate.sh
+        # STUB. Checks, in order:
+        #   1. SHA256SUMS signature valid against pinned fingerprint
+        #   2. artifact checksum matches the signed sums file
+        #   3. stable release, not a prerelease
+        #   4. version moves forward only
+        #   5. release age >= policy.min_soak_days
+        #   6. plugin api_version compatible with pinned Packer
+        # Exits non-zero on any failure. Writes a markdown table to
+        # $GITHUB_OUTPUT as `report`.
+        #
+        # Security-fix waiver: a PR labelled `security-waiver` skips
+        # criterion 5 only, and the waiver is recorded in the report.
+
+      - name: Post results to the PR
+        if: always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: gate
+          message: ${{ steps.run.outputs.report }}
