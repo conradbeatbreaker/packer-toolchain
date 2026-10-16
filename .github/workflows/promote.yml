@@ -46,7 +46,7 @@ jobs:
     strategy:
       matrix:
         repo:
-          - acme/windows-image
+          - conradbeatbreaker/packer-controls-windows-image
           # add further image repos here
     steps:
       - name: Open bump PR in consumer repo
