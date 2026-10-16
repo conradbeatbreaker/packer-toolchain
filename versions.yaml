@@ -9,7 +9,7 @@ packer:
 plugins:
   vsphere:
     source: github.com/hashicorp/vsphere
-    version: "1.4.2"
+    version: "1.4.3"
     api_version: "x5.0"
     approved_by: "j.smith"
     approved_at: "2026-10-01"
