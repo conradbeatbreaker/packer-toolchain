@@ -56,6 +56,7 @@ jobs:
         run: |
           gh workflow run bump-toolchain.yml \
             --repo "${{ matrix.repo }}" \
+            --ref main \
             --field toolchain_sha="${{ github.sha }}"
         # Pattern A: each image repo gets a PR and approves its own bump.
         # Nothing is pushed into a consumer without review there.
