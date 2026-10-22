@@ -149,7 +149,7 @@ while IFS=$'\t' read -r product version source; do
     else
       c6="$FAIL"
       declared="$(yq -r ".plugins.\"${product#packer-plugin-}\".api_version" "$VERSIONS")"
-      bin="$(find "$dir/bin" -maxdepth 1 -type f -name "${product}_v*" | head -1)"
+      bin="$(find "$dir/bin" -maxdepth 1 -type f -name "${product}_v*" -print -quit)"
       actual="$( [[ -n "$bin" ]] && "$bin" describe 2>/dev/null | jq -r '.api_version // empty' || true)"
       if [[ -z "$actual" ]]; then
         note "$product" "$version" "plugin binary did not answer \`describe\`"

@@ -41,11 +41,13 @@ while IFS=$'\t' read -r product version source; do
 
   if [[ "$product" == "packer" ]]; then
     unzip -q -o "$dir/$zip" packer -d "$dest/bin"
-    got="$("$dest/bin/packer" version | head -1)"
+    # No `| head -1`: head exits early, packer gets SIGPIPE, pipefail fails the job.
+    got="$("$dest/bin/packer" version)"
+    got="${got%%$'\n'*}"
     [[ "$got" == "Packer v$version" ]] || die "expected Packer v$version, binary reports '$got'"
   else
     unzip -q -o "$dir/$zip" -d "$dir/bin"
-    bin="$(find "$dir/bin" -maxdepth 1 -type f -name "${product}_v*" | head -1)"
+    bin="$(find "$dir/bin" -maxdepth 1 -type f -name "${product}_v*" -print -quit)"
     [[ -n "$bin" ]] || die "$zip contains no plugin binary"
     "$dest/bin/packer" plugins install --path "$bin" "$source"
   fi

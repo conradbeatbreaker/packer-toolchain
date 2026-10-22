@@ -32,7 +32,8 @@ api_version_of() {
   name="$zip"
   if ! [[ "$name" =~ _x[0-9]+\.[0-9]+_ ]]; then
     fetch "$base/$zip" "$work/$zip" || return 1
-    name="$(unzip -Z1 "$work/$zip" | grep -E "^${1}_v" | head -1)"
+    name="$(unzip -Z1 "$work/$zip" | grep -E "^${1}_v")"
+    name="${name%%$'\n'*}"
   fi
   [[ "$name" =~ _(x[0-9]+\.[0-9]+)_ ]] && echo "${BASH_REMATCH[1]}"
 }
