@@ -1,3 +1,27 @@
-# versions.yaml requires review by the toolchain owners.
-# These approvers must NOT have write access to scripts/ or .github/.
-/versions.yaml @conradbeatbreaker
+# Three distinct roles. Routine bump approver ≠ soak waiver approver ≠
+# gate/key owner. If the person who approves a bump can also weaken the
+# gate or swap a key, the gate is advisory.
+#
+# Lab: everything is owned by one account. Prod: replace each line's owner
+# with the team named in the comment above it, and make sure the bypass lists on the
+# main ruleset are empty.
+#
+# CODEOWNERS is read from the base branch, so a change here takes effect
+# from the next PR onward.
+
+# prod: @toolchain-approvers
+/versions.yaml    @conradbeatbreaker
+# prod: @soak-waiver-approvers
+/waivers/         @conradbeatbreaker
+# prod: @security-team
+/scripts/         @conradbeatbreaker
+# prod: @security-team
+/keys/            @conradbeatbreaker
+# prod: @security-team
+/policy/          @conradbeatbreaker
+# prod: @security-team
+/nexus/           @conradbeatbreaker
+# prod: @security-team
+/.github/         @conradbeatbreaker
+# prod: @security-team
+/CODEOWNERS       @conradbeatbreaker

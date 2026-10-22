@@ -1,8 +1,8 @@
 name: Gate
 
 # Runs on any PR touching versions.yaml. All six criteria must pass.
-# Also enforces that a bump PR touches ONLY versions.yaml — a PR that
-# edits the gate itself must not be reviewable as a routine bump.
+# Also enforces that a bump PR touches ONLY versions.yaml (and waivers/) —
+# a PR that edits the gate itself must not be reviewable as a routine bump.
 
 on:
   pull_request:
@@ -15,50 +15,41 @@ permissions:
 
 jobs:
   scope-check:
-    name: PR touches only versions.yaml
-    runs-on: ubuntu-latest
+    name: PR touches only versions.yaml and waivers/
+    runs-on: [self-hosted, linux, packer]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Fail if the diff reaches beyond versions.yaml
+      - name: Fail if the diff reaches beyond versions.yaml and waivers/
         run: ./scripts/check-pr-scope.sh "${{ github.event.pull_request.base.sha }}"
-        # STUB: exits 1 if any path other than versions.yaml changed.
         # Catches a PR that weakens the gate while bumping a version.
 
   criteria:
     name: Gate criteria
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, packer]
     needs: scope-check
-    outputs:
-      report: ${{ steps.run.outputs.report }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Import pinned HashiCorp signing key
-        run: |
-          gpg --import keys/hashicorp.asc
-          # Fingerprint lives in versions.yaml under policy.key_fingerprint.
-          # Never fetched at runtime — a fetched key proves nothing.
+        with:
+          fetch-depth: 0
 
       - name: Run criteria
         id: run
-        run: ./scripts/gate.sh
-        # STUB. Checks, in order:
-        #   1. SHA256SUMS signature valid against pinned fingerprint
-        #   2. artifact checksum matches the signed sums file
-        #   3. stable release, not a prerelease
-        #   4. version moves forward only
-        #   5. release age >= policy.min_soak_days
-        #   6. plugin api_version compatible with pinned Packer
-        # Exits non-zero on any failure. Writes a markdown table to
-        # $GITHUB_OUTPUT as `report`.
+        env:
+          GH_TOKEN: ${{ github.token }}   # GitHub API rate limit for release metadata
+        run: ./scripts/gate.sh "${{ github.event.pull_request.base.sha }}"
+        # See the header of scripts/gate.sh for the six criteria. Keys and the
+        # soak period come from policy/trust.yaml, imported into a throwaway
+        # keyring per check — never fetched at runtime.
         #
-        # Security-fix waiver: a PR labelled `security-waiver` skips
-        # criterion 5 only, and the waiver is recorded in the report.
+        # Security-fix waiver: criterion 5 only, and only via a file in
+        # waivers/ matching this exact component and version. Not a label:
+        # GitHub can't restrict who applies a label. CODEOWNERS on waivers/
+        # decides who can grant one.
 
       - name: Post results to the PR
-        if: always()
+        if: always() && steps.run.outputs.report != ''
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: gate

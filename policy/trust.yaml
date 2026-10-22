@@ -1,0 +1,41 @@
+# Trust policy: who signs each component, where it is published, and how
+# long a release must soak. Owned by @security-team via CODEOWNERS.
+#
+# Deliberately separate from versions.yaml. A bump PR may move a version;
+# it must not be able to change which key that version is checked against,
+# where it is fetched from, or the soak period it has to clear.
+#
+# Changing a fingerprint here requires out-of-band confirmation against a
+# second source, never just a PR approval.
+
+min_soak_days: 14
+
+keys:
+  hashicorp:
+    fingerprint: "C874011F0AB405110D02105534365D9472D7468F"
+    file: keys/hashicorp.asc
+  # Broadcom took over the vSphere plugin from HashiCorp. Releases from
+  # v2.1.x onward are signed with this key; v2.0.0 and earlier were signed
+  # with the HashiCorp key. Fetched from keys.openpgp.org.
+  # TODO: confirm this fingerprint against a second, independent Broadcom
+  # source before relying on it.
+  broadcom-packer-plugins:
+    fingerprint: "35A785679DBCD9EC538063E51417BA833615A23D"
+    file: keys/broadcom-packer-plugins.asc
+
+# upstream:
+#   hashicorp            releases.hashicorp.com, fetched via Nexus packer-proxy
+#   github:<owner/repo>  GitHub release assets, fetched via Nexus github-proxy
+# source: the Packer plugin source address versions.yaml must use.
+components:
+  packer:
+    upstream: hashicorp
+    key: hashicorp
+  packer-plugin-ansible:
+    upstream: hashicorp
+    key: hashicorp
+    source: github.com/hashicorp/ansible
+  packer-plugin-vsphere:
+    upstream: github:vmware/packer-plugin-vsphere
+    key: broadcom-packer-plugins
+    source: github.com/vmware/vsphere

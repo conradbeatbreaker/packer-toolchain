@@ -14,22 +14,28 @@ permissions:
 
 jobs:
   detect:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, packer]
     steps:
       - uses: actions/checkout@v4
 
       - name: Check upstream for newer versions
         id: check
+        env:
+          GH_TOKEN: ${{ github.token }}   # GitHub API rate limit for release metadata
         run: ./scripts/detect-upstream.sh
-        # STUB: writes versions.yaml in place and sets outputs:
+        # Proposes the newest stable release past the soak period, writes
+        # versions.yaml in place and sets outputs:
         #   changed=true|false
-        #   summary=<human-readable list of what moved>
+        #   summary=<markdown list of what moved, and what is still soaking>
 
       - name: Open PR
         if: steps.check.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          branch: bump/toolchain-${{ github.run_id }}
+          # Fixed branch: a new run supersedes the open PR instead of
+          # stacking a second one that conflicts on the same lines.
+          branch: bump/toolchain
+          delete-branch: true
           title: "Bump Packer toolchain"
           body: |
             Automated version bump proposed by the detect workflow.
@@ -37,8 +43,7 @@ jobs:
             ${{ steps.check.outputs.summary }}
 
             The gate workflow will post criteria results below.
-            Do not merge until all six criteria pass and you have
-            completed the reviewer checklist in CONTRIBUTING.md.
+            Do not merge until all six criteria pass.
           labels: toolchain-bump
           commit-message: |
             Bump Packer toolchain

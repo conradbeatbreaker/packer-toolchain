@@ -10,40 +10,52 @@ on:
     paths:
       - "versions.yaml"
   workflow_dispatch:
+  # TODO: remove workflow_dispatch once testing is done. A manual promote
+  # skips the PR gate.
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+  actions: read          # record-approval.sh reads this run's approvals
 
 jobs:
   promote:
-    runs-on: ubuntu-latest
+    # Must reach Nexus. In prod, give promotion its own runner and label:
+    # build jobs run arbitrary template code on theirs, and this job holds
+    # the account that can add to packer-hosted.
+    runs-on: [self-hosted, linux, packer]
     environment: artifact-promotion    # <-- required reviewers configured here
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Re-run gate criteria
-        run: ./scripts/gate.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/gate.sh "${{ github.event.before || 'HEAD^1' }}"
         # Deliberately repeated. The PR gate ran against the PR head;
         # this runs against what actually merged.
 
-      - name: Upload to Nexus
+      - name: Record approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/record-approval.sh "$RUNNER_TEMP/promotion.json"
+        # Approver comes from this run's environment approval, not
+        # github.actor (that's whoever merged). Fails if there isn't one.
+
+      - name: Fetch via proxy, verify, upload to packer-hosted
         env:
           NEXUS_URL: ${{ vars.NEXUS_URL }}
           NEXUS_USER: ${{ secrets.NEXUS_PROMOTE_USER }}
           NEXUS_PASS: ${{ secrets.NEXUS_PROMOTE_PASS }}
-        run: ./scripts/promote.sh
-        # STUB: uploads zip + SHA256SUMS + .sig to the hosted raw repo at
-        # a version-scoped path. Redeploy is disabled, so a replay fails
-        # loudly rather than silently overwriting.
-
-      - name: Record approver in versions.yaml
-        run: ./scripts/record-approval.sh "${{ github.actor }}"
-        # STUB: writes approved_by / approved_at back, commits to main.
+        run: ./scripts/promote.sh "$RUNNER_TEMP/promotion.json"
+        # Uploads zip + SHA256SUMS + .sig + promotion.json to
+        # packer-hosted/<product>/<version>/. Redeploy is disabled, so a
+        # replay fails loudly rather than silently overwriting.
 
   notify-consumers:
     needs: promote
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, packer]
     strategy:
       matrix:
         repo:
