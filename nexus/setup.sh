@@ -11,14 +11,16 @@
 # Shape (no group repository; CI must not be able to reach a proxy):
 #
 #   packer-hosted  raw hosted  redeploy disabled, strict content type off
-#                              CI: read+browse   promote: read+browse+add
+#                              CI: read+browse   promote: read+browse+add+edit
 #   packer-proxy   raw proxy   https://releases.hashicorp.com/
 #   github-proxy   raw proxy   https://github.com/   (vSphere plugin)
 #                              promote: read+browse   CI: nothing
 #
-# Nobody gets delete or edit. Redeploy-disabled stops overwrite, not
-# delete-then-reupload; the privilege model is what makes hosted immutable.
-# Keep delete for a named break-glass account only.
+# Nexus checks `edit` for a PUT upload (`add` covers the components API),
+# so promote needs both. That does not allow overwriting: redeploy-disabled
+# is enforced by the repository whatever the privileges. It stops overwrite,
+# not delete-then-reupload, so nobody gets delete; the privilege model is
+# what makes hosted immutable. Keep delete for a named break-glass account.
 #
 # Strict content type validation is off on purpose: it is a format check,
 # not an integrity control, and it rejects the extensionless SHA256SUMS
@@ -36,7 +38,7 @@ api() {  # METHOD PATH [JSON]
 }
 exists() { api GET "$1" >/dev/null 2>&1; }
 
-create() {  # KIND NAME CHECK_PATH CREATE_PATH JSON
+create() {  # KIND NAME CHECK_PATH CREATE_PATH JSON (does not update an existing one)
   if exists "$3"; then echo "exists:  $1 $2"; else api POST "$4" "$5" >/dev/null; echo "created: $1 $2"; fi
 }
 
@@ -73,9 +75,9 @@ create role packer-ci /v1/security/roles/packer-ci /v1/security/roles \
 create role packer-promote /v1/security/roles/packer-promote /v1/security/roles \
   "$(jq -n --args '{
     id: "packer-promote", name: "packer-promote",
-    description: "Promotion job: fetch via proxies, add new artifacts to packer-hosted. No edit, no delete.",
+    description: "Promotion job: fetch via proxies, upload new artifacts to packer-hosted. No delete.",
     privileges: $ARGS.positional, roles: []
-  }' "$(priv packer-hosted read)" "$(priv packer-hosted browse)" "$(priv packer-hosted add)" \
+  }' "$(priv packer-hosted read)" "$(priv packer-hosted browse)" "$(priv packer-hosted add)" "$(priv packer-hosted edit)" \
      "$(priv packer-proxy read)" "$(priv packer-proxy browse)" \
      "$(priv github-proxy read)" "$(priv github-proxy browse)")"
 
