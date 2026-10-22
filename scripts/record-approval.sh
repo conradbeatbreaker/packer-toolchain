@@ -30,7 +30,10 @@ approval="$(gh_get "actions/runs/$GITHUB_RUN_ID/approvals" |
   jq -c '[.[] | select(.state == "approved")] | last // empty')"
 [[ -n "$approval" ]] || { echo "::error::No environment approval recorded for run $GITHUB_RUN_ID. Refusing to promote."; exit 1; }
 
-pr="$(gh_get "commits/$GITHUB_SHA/pulls" | jq -r '.[0].html_url // ""')"
+# Informational only: a GitHub API hiccup here must not block a promotion
+# that has a recorded approval.
+pr="$(gh_get "commits/$GITHUB_SHA/pulls" | jq -r '.[0].html_url // ""' || true)"
+[[ -n "$pr" ]] || echo "::warning::Could not look up the PR for $GITHUB_SHA; promotion record will omit it."
 
 jq -n \
   --argjson a "$approval" \
