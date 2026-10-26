@@ -7,8 +7,7 @@
 # (promotion.json) and in the artifact-promotion deployment history.
 
 packer:
-  version: "1.16.0"
-
+  version: "1.16.1"
 plugins:
   vsphere:
     source: github.com/vmware/vsphere
@@ -16,5 +15,5 @@ plugins:
     api_version: "x5.0"
   ansible:
     source: github.com/hashicorp/ansible
-    version: "1.1.1"
+    version: "1.1.6"
     api_version: "x5.0"
